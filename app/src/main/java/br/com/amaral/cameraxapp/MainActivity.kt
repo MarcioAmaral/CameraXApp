@@ -7,10 +7,7 @@ import android.os.Bundle
 import android.util.Log
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import androidx.camera.core.CameraSelector
-import androidx.camera.core.ImageCapture
-import androidx.camera.core.ImageCaptureException
-import androidx.camera.core.Preview
+import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -73,8 +70,8 @@ class MainActivity : AppCompatActivity() {
 
                 override fun onImageSaved(output: ImageCapture.OutputFileResults) {
                     val savedUri = Uri.fromFile(photoFile)
-                    val msg = "Photo capture succeeded: $ savedUri"
-                    Toast.makeText(baseContext, msg, Toast.LENGTH_SHORT).show()
+                    val msg = "Photo capture succeeded: $savedUri"
+                    Toast.makeText(baseContext, msg, Toast.LENGTH_LONG).show()
                     Log.d(TAG, msg)
                 }
             })
@@ -94,7 +91,18 @@ class MainActivity : AppCompatActivity() {
                     it.setSurfaceProvider(viewFinder.createSurfaceProvider())
                 }
 
-            // Selcione a câmera traseira como padrão
+            imageCapture = ImageCapture.Builder()
+                .build()
+
+            val imageAnalyzer = ImageAnalysis.Builder()
+                .build()
+                .also {
+                    it.setAnalyzer(cameraExecutor, LuminosityAnalyzer { luma ->
+                        Log.d(TAG, "Average luminosity: $luma")
+                    })
+                }
+
+            // Selecione a câmera traseira como padrão
             val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
 
             try {
@@ -103,11 +111,12 @@ class MainActivity : AppCompatActivity() {
 
                 // Vincule casos de uso à câmera
                 cameraProvider.bindToLifecycle(
-                    this, cameraSelector, preview)
-            } catch (exec: Exception) {
-                Log.e(TAG, "A ligação do caso de uso falhou")
+                    this, cameraSelector, preview, imageCapture)
+            } catch (exc: Exception) {
+                Log.e(TAG, "A ligação do caso de uso falhou", exc)
             }
         }, ContextCompat.getMainExecutor(this))
+
     }
 
     private fun allPermissionsGranted() = REQUIRED_PERMISSIONS.all {
